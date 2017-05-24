@@ -18,31 +18,52 @@ Issuer.discover('http://localhost:8080/oauth/openid/')
 		passport.use('oidc',
 			new OIDCStrategy({
 				client: client,
-				redirect_uri: 'http://2cfe9c44.ngrok.io/callback',
-				scope: 'openid profile email'
+				params: {
+					redirect_uri: 'http://2cfe9c44.ngrok.io/callback',
+					scope: 'openid profile'
+				}
 			},
 			function(tokenset, userInfo, done) {
 				return done(null, userInfo);
 			}
 		));
 
+		passport.deserializeUser(function(req, user, cb) {
+			return cb(null, user);
+		});
+
+		passport.serializeUser(function(req, user, cb) {
+			return cb(null, user);
+		});
+
 		var app = express();
 
-		app.use(passport.initialize());
-		app.use(passport.session());
 		app.use(session({
 			secret: 'holiday in cambodia'
 		}));
+		app.use(passport.initialize());
+		app.use(passport.session());
 
 		app.get('/', function(req, res) {
+			if (req.user) {
+				return res.json({
+					'status': 'loggedin',
+					'user': req.user
+				});
+			}
+
 			return res.json({
-				'time': 'miller',
-				'user': req.user
+				status: 'loggedout'
 			});
+
 		})
 
-		app.get('/login', passport.authenticate('oidc', { successReturnToOrRedirect: '/' }));
-		app.get('/callback', passport.authenticate('oidc', { successReturnToOrRedirect: '/', failureRedirect: '/error' }));
+		app.get('/login', passport.authenticate('oidc'));
+		app.get('/callback', passport.authenticate('oidc', { successRedirect: '/', failureRedirect: '/error' }));
+		app.get('/logout', function(req, res) {
+			req.logout();
+			res.redirect('/');
+		});
 		app.get('/jwks', (req, res) => {
 			return res.json({
 				keys: [
