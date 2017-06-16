@@ -2,7 +2,8 @@ const express = require('express'),
 	session = require('express-session'),
 	passport = require('passport'),
 	Issuer = require('openid-client').Issuer,
-	OIDCStrategy = require('openid-client').Strategy;
+	OIDCStrategy = require('openid-client').Strategy,
+	bodyParser = require('body-parser');
 
 (async () => {
 	const issuer = await Issuer.discover('http://localhost:8080/oauth/openid/')
@@ -19,8 +20,7 @@ const express = require('express'),
 			client: client,
 			params: {
 				redirect_uri: 'http://2cfe9c44.ngrok.io/callback',
-				scope: 'openid profile company',
-				login_hint: 'prinne@vendorco.com'
+				scope: 'openid profile'
 			}
 		},
 			function (tokenset, userInfo, done) {
@@ -46,6 +46,7 @@ const express = require('express'),
 	}));
 	app.use(passport.initialize());
 	app.use(passport.session());
+	app.use(bodyParser.urlencoded({ extended: false }))
 
 	app.get('/', function (req, res) {
 		if (req.user) {
@@ -62,6 +63,14 @@ const express = require('express'),
 	});
 
 	app.get('/login', passport.authenticate('oidc'));
+	app.post('/login', function(req, res, next) {
+		console.log('ISS:', req.body['iss']);
+		console.log('LOGIN_HINT:', req.body['login_hint']);
+		console.log('TARGET_LINK_URL:', req.body['target_link_url']);
+		// Prevent strategy from recognizing this as a callback
+		req.body = {};
+		passport.authenticate('oidc', { login_hint: req.body['login_hint'] })(req, res, next);
+	});
 	app.get('/callback', passport.authenticate('oidc', { successRedirect: '/', failureRedirect: '/error' }));
 	app.get('/logout', function (req, res) {
 		req.logout();
