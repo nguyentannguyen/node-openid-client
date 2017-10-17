@@ -6,12 +6,18 @@ const express = require('express'),
 	bodyParser = require('body-parser');
 
 (async () => {
-	const issuer = await Issuer.discover('http://localhost:8080/oauth/openid/')
+	// const issuer = await Issuer.discover('http://localhost:8080')
+	const issuer = await Issuer.discover('http://superco.local:8080');
+
 
 	console.log(issuer);
 	const client = new issuer.Client({
-		client_id: 'OIDC',
-		client_secret: 'Z9v6n1xtEkjI5EellGqh'
+		// client_id: 'OIDC',
+		// client_secret: 'Z9v6n1xtEkjI5EellGqh'
+		// client_id: 'OCvGjUxSYk',
+		// client_secret: '8rEcKqPHVeKIY6fM54i6'
+		client_id: 'Ez9VFVrgUf',
+		client_secret: 'Wtdf3r2RU14cxVCTunGz'
 	});
 	console.log(client);
 
@@ -19,13 +25,13 @@ const express = require('express'),
 		new OIDCStrategy({
 			client: client,
 			params: {
-				redirect_uri: 'http://2cfe9c44.ngrok.io/callback',
-				scope: 'openid profile'
+				redirect_uri: 'https://5d8f38ef.ngrok.io/callback',
+				scope: 'openid email profile'
 			}
 		},
 			function (tokenset, userInfo, done) {
 				console.log(tokenset);
-				return done(null, userInfo);
+				return done(null, { tokens: tokenset, user: userInfo });
 			}
 		));
 
@@ -52,7 +58,8 @@ const express = require('express'),
 		if (req.user) {
 			return res.json({
 				'status': 'loggedin',
-				'user': req.user
+				'user': req.user.user,
+				'tokens': req.user.tokens
 			});
 		}
 
@@ -62,7 +69,9 @@ const express = require('express'),
 
 	});
 
-	app.get('/login', passport.authenticate('oidc'));
+	app.get('/login', function(req, res, next) {
+		passport.authenticate('oidc', { login_hint: req.params.login_hint })(req, res, next);
+	});
 	app.post('/login', function(req, res, next) {
 		console.log('ISS:', req.body['iss']);
 		console.log('LOGIN_HINT:', req.body['login_hint']);
